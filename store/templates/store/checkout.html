@@ -1,0 +1,193 @@
+{% extends 'store/main.html' %}
+{% load static %}
+<link rel="stylesheet" type="text/css" href="{% static 'css/main.css' %}">
+{% block content %}
+    <div class="row">
+        <div class="col-lg-6">
+            <div class="box-element" id="form-wrapper">
+                <form id="form">
+                    {% csrf_token %}
+                    <div id="user-info">
+                        <div class="form-field"> <!--creating two different divs here for name and email will place these fields side by side on the page if both name and email were contained in one div of class aboved form-field then it will put them one below another on the page-->
+                            <input required class="form-control" type="text" placeholder="name">
+                            
+                        </div>
+                        <div class="form-field">
+                            <input required class="form-control" type="email" placeholder="Email">
+                            
+                        </div>
+
+                    </div>
+                    <div id="shipping-info">
+                        <hr>
+                        <p>Shipping Information:</p>
+                        <hr>
+                        <div class="form-field">
+                            <input class="form-control" type="text" name="address" placeholder="Address">
+                        </div>
+                        <div class="form-field">
+                            <input class="form-control" type="text" name="city" placeholder="City">
+                        </div>
+                        <div class="form-field">
+                            <input class="form-control" type="text" name="state" placeholder="State">
+                        </div>
+                        <div class="form-field">
+                            <input class="form-control" type="text" name="country" placeholder="Country">
+                        </div>
+                        <div class="form-field">
+                            <input class="form-control" type="text" name="zipcode" placeholder="zipcode">
+                        </div>
+                        <hr>
+                    </div>
+
+                    <hr>
+                   
+                    <input id="form-button" class="btn btn-success btn-block" type="submit" value="continue">
+                </form>
+            </div>
+            <br>
+            <div class="box-element hidden" id="payment-info">
+                <strong>Paypal Options</strong>
+                <!-- <div id="paypal-button-container"></div> -->
+                <button id="make-payment">Make Payment</button>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="box-element">
+                <a class="btn btn-outline-dark" href="{% url 'cart' %}">&#x2190; Back to Cart</></a>
+                <hr>
+                <h3>Order Summary</h3>
+                <hr>
+                {% for item in items %}
+                <div class="cart-row">
+                    <div style="flex: 2"><img class="row-image" src="{{item.product.imageURL}}"></div>
+                    <div style="flex: 2"><p>{{item.product.name}}</p></div>
+                    <div style="flex: 1"><p>${{item.product.price}}</p></div>
+                    <div style="flex: 1"><p>{{item.quantity}}</p></div>
+
+                </div>
+            {% endfor %}
+                <h5>Items: {{order.get_cart_items}}</h5>
+                <h5>Total: ${{order.get_cart_total|floatformat:2}}</h5>
+            </div>
+        </div>
+    </div>
+    
+    
+    <script type="text/javascript"> //logic for hiding the process of getting user's shipping info if the product is digital so it wont need shipping
+    
+    var shipping = '{{order.shipping}}' //we access the shipping attribute from the order(views.py) and store its value in var
+    
+    var total = '{{order.get_cart_total}}'
+    
+    if (shipping == 'False'){ //if shipping is false that means it wont need to be delivered
+        document.getElementById('shipping-info').innerHTML = '' //gets the id shipping info from above where we defined the div for obtaining the shipping info and hides it if shipping is false
+    }
+    
+    if(user != 'AnonymousUser'){
+        document.getElementById('user-info').innerHTML = ''
+    }
+    
+    if(shipping == 'False' && user != 'AnonymousUser'){
+        document.getElementById('form-wrapper').classList.add('hidden')
+        document.getElementById('payment-info').classList.remove('hidden')
+
+    }
+
+
+    var form = document.getElementById('form') //logic for first getting the shipping info and when user clicks continue we will hide the continue button and pop out paypal options button
+    csrftoken = form.getElementsByTagName("input")[0].value
+    console.log('NewToken:', form.getElementsByTagName("input")[0].value)
+    
+    
+    form.addEventListener('submit', function(e){  /* getting the form and adding an event listener to it passing a fun with parameter 'e' which means event, so 
+    e.preventdefault will prevent default action of submitting form, from happening coz we want to control the form*/
+        e.preventDefault()
+        console.log("form submitted")
+        document.getElementById('form-button').classList.add('hidden') //this will add the hide property to continue button  and the other one will remove the hidden prop from paypal opts id.
+        document.getElementById('payment-info').classList.remove('hidden')
+
+  
+    })
+    document.getElementById('make-payment').addEventListener('click', function(e){
+        submitFormData()
+    })
+
+    function submitFormData(){  //logic for obtaining the entered shipping info by the user and sending it to the backend
+        console.log("payment button clicked")
+
+        var userFormData = { //this var will take care of the anonymous user
+            'name':null,
+            'email':null,
+            'total':total,
+        }
+
+        var shippingInfo = {  //this is for the user already logged in so it will obtain all the info
+            'address':null,
+            'city':null,
+            'city':null,
+            'state':null,
+            'zipcode':null,
+           }
+           
+        if(shipping != 'False'){  //shipping is true that means we have to ship the product to the customer
+            shippingInfo.address = form.address  //the 'value' entered by the user in our form will be obtained and stored in the address variable
+            shippingInfo.city = form.city
+            shippingInfo.state = form.state //   .value means to obtain the value entered in the field by the user and storing it here so that we can send it to the backend
+            shippingInfo.zipcode = form.zipcode                              
+        }
+
+        if(user=='AnonymousUser'){
+            userFormData.name = form.name
+            userFormData.email = form.email
+        }
+
+        var url = '/process_order/' //send below data to this url
+        fetch(url,
+        {
+            method: "POST",
+            headers:{
+                'Content-Type':'application/json',
+                'Accept': 'application/json',
+                'X-CSRFToken':csrftoken,
+
+            }, //before sending the data we need to stringify it because it is in the form of objects and we need it in the form of dict
+            body:JSON.stringify({'form':userFormData, 'shipping':shippingInfo})
+
+        })
+
+        .then((response) =>{  //after sending the data to the backend we need to return some promise this is that
+            return response.json()
+            })
+            .then((data)=>{
+            
+            console.log('Success:',data);
+            alert("transaction completed");
+            cart = {}  //this resets the cookies once the user clicks the make payment button the cookies will remove all the items from cookie set. checkout console of browser. afterwards we are directing them back to the home page. because after they have made payment of all the items in their cart theres no need to keep that info in cookie set so it will redirect them to the homepage and our cookies will be reset
+
+            //in order to set the cookies to any variable we need to use this document.cookie = 'var-name' append it i.e. '+' and if we want to convert them into the string we can use json.stringify and then set it to the whole website/domain using ;domain=;path=/
+            document.cookie = 'cart=' + JSON.stringify(cart) + ";domain=;path=/"
+            
+            window.location.href ="{% url 'store' %}"   //after successful payment user is redirected to the home page
+            })
+
+            }
+
+
+        // fetch("url").then(async response => {
+            
+                
+        //     try {
+        //     const data = await response.json()
+        //     console.log('response data?', data)
+        //     } catch(error) {
+        //     console.log('Error happened here!')
+        //     console.log(error)
+        //     }
+        // })
+
+
+
+    </script>
+
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends 'store/main.html' %}
+{% load static %}
+<link rel="stylesheet" type="text/css" href="{% static 'css/main.css' %}">
+{% block content %}
+<div class="row">
+	{% for product in products %}
+	<div class="col-lg-4">
+		<img class="thumbnail" src="{{product.imageURL}}">
+		<div class="box-element product">
+			<h6><strong>{{product.name}}</strong></h6>
+			<hr>
+	
+			<button data-product={{product.id}} data-action="add" class="btn btn-outline-secondary add-btn update-cart">Add to Cart</button> <!--in order to create custom attributes in html use the word data followed by a '-' eg: data- followed by the attribute name
+			so here we created two custom attributes those are data-product and data-action-->
+			<a class="btn btn-outline-success" href="#">View</a>
+			<h4 style="display: inline-block; float: right"><strong>${{product.price}}</strong></h4>
+	
+		</div>
+	</div>
+	{% endfor %}
+	</div>
+{% endblock %}
+
+
